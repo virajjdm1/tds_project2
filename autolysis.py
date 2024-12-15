@@ -160,6 +160,19 @@ def generate_story(df: pd.DataFrame, summary, outliers, correlation_values):
     """
     return query_openai(prompt)
 
+# Function to format summary statistics in a human-friendly way
+def format_summary_statistics(summary):
+    formatted_summary = "### Summary Statistics\n"
+    for col in summary.columns:
+        formatted_summary += f"\n**{col}**:\n"
+        for stat, value in summary[col].items():
+            # Modified: Check if the value is a string before formatting
+            if isinstance(value, (int, float)):
+                formatted_summary += f"  - {stat}: {value:.2f}\n"
+            else:
+                formatted_summary += f"  - {stat}: {value}\n"
+    return formatted_summary
+
 # Main function to process the CSV and generate outputs
 def main(dataset_file: str):
     # Load the dataset
@@ -206,12 +219,14 @@ def main(dataset_file: str):
     # Generate the story from the LLM with the correlation values included
     story = generate_story(df, summary, outliers, correlation_values)
 
+    # Format the summary statistics
+    formatted_summary = format_summary_statistics(summary)
+
     # Save the analysis in a README.md file
     readme_filename = "README.md"
     with open(readme_filename, "w") as readme_file:
         readme_file.write(f"# Data Analysis Story for {dataset_file}\n\n")
-        readme_file.write("## Summary Statistics\n")
-        readme_file.write(summary.to_string())
+        readme_file.write(formatted_summary)
         readme_file.write("\n\n## Outlier Counts\n")
         readme_file.write(outliers.to_string())
         readme_file.write("\n\n## Story and Insights\n")
@@ -239,5 +254,6 @@ if __name__ == "__main__":
         except (requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as e:
             print(f"Error occurred: {e}. Retrying...")
             time.sleep(5)  # Wait before retrying
-            subprocess.run(["uv", "run", "autolysis.py", dataset_file], check=True)
+        except Exception as e:
+            print(f"Unexpected error occurred: {e}. Exiting...")
             break
